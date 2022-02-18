@@ -18,7 +18,7 @@ namespace BinanceApiTask
 		{
 			string input = "bnb/usdt, btc/usdt eth/usdt";
 			string[] inputArr = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-			Dictionary<string, List<QuoteValue>> trades = new Dictionary<string, List<QuoteValue>>();
+			Dictionary<string, List<Trade>> trades = new Dictionary<string, List<Trade>>();
 			int maxTradesCount = 10000;
 
 
@@ -33,13 +33,13 @@ namespace BinanceApiTask
 					var ws = new WebSocket(url);
 					ws.OnMessage += (sender, e) =>
 					{
-						QuoteValue trade = new QuoteValue();
+						Trade trade = new Trade();
 						try
 						{
 							var parsedObject = JObject.Parse(e.Data);
 							var jsonKeys = parsedObject.ToString();
 
-							trade = JsonConvert.DeserializeObject<QuoteValue>(jsonKeys);
+							trade = JsonConvert.DeserializeObject<Trade>(jsonKeys);
 							trades = AddToPairsDictionary(trades, trade);
 
 							PrintData(trades);
@@ -70,7 +70,7 @@ namespace BinanceApiTask
 
 		}
 
-		private static Dictionary<string, List<QuoteValue>> ClearDictionary(Dictionary<string, List<QuoteValue>> trades, int maxTradesCount)
+		private static Dictionary<string, List<Trade>> ClearDictionary(Dictionary<string, List<Trade>> trades, int maxTradesCount)
 		{
 			foreach (var trade in trades)
 			{
@@ -82,13 +82,13 @@ namespace BinanceApiTask
 			return trades;
 		}
 
-		private static Dictionary<string, List<QuoteValue>> AddToPairsDictionary(Dictionary<string, List<QuoteValue>> trades, QuoteValue trade)
+		private static Dictionary<string, List<Trade>> AddToPairsDictionary(Dictionary<string, List<Trade>> trades, Trade trade)
 		{
 			string symbol = trade.Symbol;
 
 			if (!trades.ContainsKey(symbol))
 			{
-				trades[symbol] = new List<QuoteValue>();
+				trades[symbol] = new List<Trade>();
 				//trades.Add(symbol, new List<QuoteValue>());
 			}
 			//trades[symbol].Add(trade);
@@ -97,7 +97,7 @@ namespace BinanceApiTask
 			return trades;
 		}
 
-		private static void PrintData(Dictionary<string, List<QuoteValue>> trades)
+		private static void PrintData(Dictionary<string, List<Trade>> trades)
 		{
 			// TODO print updated trade separately
 

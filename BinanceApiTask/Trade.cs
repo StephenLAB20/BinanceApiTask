@@ -5,7 +5,7 @@ using System.Text;
 
 namespace BinanceApiTask
 {
-	internal class QuoteValue
+	internal class Trade
 	{
 		//public string Type { get; set; }
 		[JsonProperty("E")]
