@@ -17,13 +17,11 @@ namespace BinanceApiTask
 	{
 		public static void Main()
 		{
-			//string input = "bnb/usdt, btc/usdt eth/usdt";
-			Console.WriteLine("Type bnb/usdt, btc/usdt eth/usdt...");
+			Console.WriteLine("Type bnb/usdt, btc/usdt eth/usdt ...");
 			string input = Console.ReadLine();
 			string[] inputArr = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			ConcurrentDictionary<string, List<Trade>> trades = new ConcurrentDictionary<string, List<Trade>>();
 			int maxTradesCount = 10000;
-
 
 			for (int i = 0; i < inputArr.Length; i++)
 			{
@@ -41,13 +39,10 @@ namespace BinanceApiTask
 						{
 							var parsedObject = JObject.Parse(e.Data);
 							var jsonKeys = parsedObject.ToString();
-
 							trade = JsonConvert.DeserializeObject<Trade>(jsonKeys);
-							//trades = AddTradesToDictionary(trades, trade);
+
 							AddTradesToDictionary(trades, trade);
-
-							PrintData(trades);
-
+							PrintData(trades, trade);
 						}
 						catch (Exception ex)
 						{
@@ -71,7 +66,6 @@ namespace BinanceApiTask
 			threadCleaner.Start();
 
 			Console.ReadKey();
-
 		}
 
 		private static ConcurrentDictionary<string, List<Trade>> ClearDictionary(ConcurrentDictionary<string, List<Trade>> trades, int maxTradesCount)
@@ -95,39 +89,62 @@ namespace BinanceApiTask
 				trades.TryAdd(symbol, new List<Trade>());
 			}
 			trades[symbol].Add(trade);
-
 			//return trades;
 		}
 
-		private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades)
+		private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
 		{
-			// TODO print updated trade separately
+			int tradePosition = trades.Keys.ToList().IndexOf(trade.Symbol);
+			string symbol = trade.Symbol;
+			string price = trade.Price;
+			bool isBuyer = trade.IsBuyer;
+			Console.SetCursorPosition(0, tradePosition + 2);
 
-			//Console.CursorVisible = false;
-			Console.SetCursorPosition(0, 3);
-
-			foreach (var trade in trades)
+			if (isBuyer)
 			{
-				string symbol = trade.Key;
-				string price = trade.Value.Last().Price;
-				bool isBuyer = trade.Value.Last().IsBuyer;
-
-				if (isBuyer)
-				{
-					Console.BackgroundColor = ConsoleColor.Green;
-					Console.ForegroundColor = ConsoleColor.White;
-					Console.WriteLine("{0,-10}{1,-10}", symbol, price);
-					//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
-				}
-				else
-				{
-					Console.BackgroundColor = ConsoleColor.Red;
-					Console.ForegroundColor = ConsoleColor.White;
-					Console.WriteLine("{0,-10}{1,-10}", symbol, price);
-					//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
-				}
+				Console.BackgroundColor = ConsoleColor.Green;
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.Write("\r{0,-10}{1,-10}", symbol, price);
+				//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
+			}
+			else
+			{
+				Console.BackgroundColor = ConsoleColor.Red;
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.Write("\r{0,-10}{1,-10}", symbol, price);
+				//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
 			}
 		}
+
+		//private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades)
+		//{
+		//	// TODO print updated trade separately
+
+		//	//Console.CursorVisible = false;
+		//	Console.SetCursorPosition(0, 3);
+
+		//	foreach (var trade in trades)
+		//	{
+		//		string symbol = trade.Key;
+		//		string price = trade.Value.Last().Price;
+		//		bool isBuyer = trade.Value.Last().IsBuyer;
+
+		//		if (isBuyer)
+		//		{
+		//			Console.BackgroundColor = ConsoleColor.Green;
+		//			Console.ForegroundColor = ConsoleColor.White;
+		//			Console.WriteLine("{0,-10}{1,-10}", symbol, price);
+		//			//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
+		//		}
+		//		else
+		//		{
+		//			Console.BackgroundColor = ConsoleColor.Red;
+		//			Console.ForegroundColor = ConsoleColor.White;
+		//			Console.WriteLine("{0,-10}{1,-10}", symbol, price);
+		//			//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
+		//		}
+		//	}
+		//}
 	}
 }
 
