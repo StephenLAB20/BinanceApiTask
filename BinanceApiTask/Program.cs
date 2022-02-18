@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,9 +17,11 @@ namespace BinanceApiTask
 	{
 		public static void Main()
 		{
-			string input = "bnb/usdt, btc/usdt eth/usdt";
+			//string input = "bnb/usdt, btc/usdt eth/usdt";
+			Console.WriteLine("Type bnb/usdt, btc/usdt eth/usdt...");
+			string input = Console.ReadLine();
 			string[] inputArr = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-			Dictionary<string, List<Trade>> trades = new Dictionary<string, List<Trade>>();
+			ConcurrentDictionary<string, List<Trade>> trades = new ConcurrentDictionary<string, List<Trade>>();
 			int maxTradesCount = 10000;
 
 
@@ -40,7 +43,8 @@ namespace BinanceApiTask
 							var jsonKeys = parsedObject.ToString();
 
 							trade = JsonConvert.DeserializeObject<Trade>(jsonKeys);
-							trades = AddToPairsDictionary(trades, trade);
+							//trades = AddTradesToDictionary(trades, trade);
+							AddTradesToDictionary(trades, trade);
 
 							PrintData(trades);
 
@@ -66,11 +70,11 @@ namespace BinanceApiTask
 			);
 			threadCleaner.Start();
 
-			Console.ReadLine();
+			Console.ReadKey();
 
 		}
 
-		private static Dictionary<string, List<Trade>> ClearDictionary(Dictionary<string, List<Trade>> trades, int maxTradesCount)
+		private static ConcurrentDictionary<string, List<Trade>> ClearDictionary(ConcurrentDictionary<string, List<Trade>> trades, int maxTradesCount)
 		{
 			foreach (var trade in trades)
 			{
@@ -82,27 +86,25 @@ namespace BinanceApiTask
 			return trades;
 		}
 
-		private static Dictionary<string, List<Trade>> AddToPairsDictionary(Dictionary<string, List<Trade>> trades, Trade trade)
+		private static void AddTradesToDictionary(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
 		{
 			string symbol = trade.Symbol;
 
 			if (!trades.ContainsKey(symbol))
 			{
-				trades[symbol] = new List<Trade>();
-				//trades.Add(symbol, new List<QuoteValue>());
+				trades.TryAdd(symbol, new List<Trade>());
 			}
-			//trades[symbol].Add(trade);
 			trades[symbol].Add(trade);
 
-			return trades;
+			//return trades;
 		}
 
-		private static void PrintData(Dictionary<string, List<Trade>> trades)
+		private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades)
 		{
 			// TODO print updated trade separately
 
 			//Console.CursorVisible = false;
-			Console.SetCursorPosition(0, 0);
+			Console.SetCursorPosition(0, 3);
 
 			foreach (var trade in trades)
 			{
