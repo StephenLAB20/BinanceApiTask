@@ -4,11 +4,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using WebSocketSharp;
-
 
 
 namespace BinanceApiTask
@@ -17,58 +15,68 @@ namespace BinanceApiTask
 	{
 		public static void Main()
 		{
-			Console.WriteLine("Type bnb/usdt, btc/usdt eth/usdt ...");
+			Console.Write("Type the pairs (ex.: bnb/usdt, btc/usdt eth/usdt): ");
 			string input = Console.ReadLine();
-			string[] inputArr = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			string[] pairs = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			ConcurrentDictionary<string, List<Trade>> trades = new ConcurrentDictionary<string, List<Trade>>();
 			int maxTradesCount = 10000;
 
-			for (int i = 0; i < inputArr.Length; i++)
+			foreach (var pair in pairs)
 			{
-				var j = i;
-				string tempInput = inputArr[j];
-				var thread = new Thread(() =>
+				new Thread(() =>
 				{
-					string url = "wss://fstream.binance.com/ws/" + tempInput + "@aggTrade";
-
-					var ws = new WebSocket(url);
-					ws.OnMessage += (sender, e) =>
-					{
-						Trade trade = new Trade();
-						try
-						{
-							var parsedObject = JObject.Parse(e.Data);
-							var jsonKeys = parsedObject.ToString();
-							trade = JsonConvert.DeserializeObject<Trade>(jsonKeys);
-
-							AddTradesToDictionary(trades, trade);
-							PrintData(trades, trade);
-						}
-						catch (Exception ex)
-						{
-							Console.WriteLine(ex.Message);
-						}
-					};
-					ws.Connect();
-				});
-				thread.Start();
+					ApplyConnection(pair, trades);
+				}
+			).Start();
 			}
 
-			Thread threadCleaner = new Thread(() =>
+			new Thread(() =>
 			{
 				while (trades.Count > 0)
 				{
-					trades = ClearDictionary(trades, maxTradesCount);
+					ClearDictionary(trades, maxTradesCount);
 					Thread.Sleep(60000);
 				}
 			}
-			);
-			threadCleaner.Start();
+			).Start();
 
 			Console.ReadKey();
 		}
 
-		private static ConcurrentDictionary<string, List<Trade>> ClearDictionary(ConcurrentDictionary<string, List<Trade>> trades, int maxTradesCount)
+		private static async void ApplyConnection(string pair, ConcurrentDictionary<string, List<Trade>> trades)
+		{
+			string url = $"wss://fstream.binance.com/ws/{pair}@aggTrade";
+			var wsc = new ClientWebSocket();
+			await wsc.ConnectAsync(new Uri(url), CancellationToken.None);
+			Trade trade = new Trade();
+			var buffer = new ArraySegment<byte>(new byte[1024]);
+
+			while (true)
+			{
+				WebSocketReceiveResult result = await wsc.ReceiveAsync(buffer, CancellationToken.None);
+				if (result.CloseStatus.HasValue)
+					break;
+				string str = Encoding.UTF8.GetString(buffer.Array, 0, result.Count);
+
+				try
+				{
+					if (str != null)
+					{
+						var parsedObject = JObject.Parse(str);
+						var jsonKeys = parsedObject.ToString();
+						trade = JsonConvert.DeserializeObject<Trade>(jsonKeys);
+						AddTrade(trades, trade);
+						PrintTrade(trades, trade);
+					}
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine(ex.Message);
+				}
+			}
+		}
+
+		private static void ClearDictionary(ConcurrentDictionary<string, List<Trade>> trades, int maxTradesCount)
 		{
 			foreach (var trade in trades)
 			{
@@ -77,10 +85,9 @@ namespace BinanceApiTask
 					trade.Value.RemoveRange(0, trade.Value.Count - maxTradesCount);
 				}
 			}
-			return trades;
 		}
 
-		private static void AddTradesToDictionary(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
+		private static void AddTrade(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
 		{
 			string symbol = trade.Symbol;
 
@@ -89,62 +96,29 @@ namespace BinanceApiTask
 				trades.TryAdd(symbol, new List<Trade>());
 			}
 			trades[symbol].Add(trade);
-			//return trades;
 		}
 
-		private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
+		private static void PrintTrade(ConcurrentDictionary<string, List<Trade>> trades, Trade trade)
 		{
 			int tradePosition = trades.Keys.ToList().IndexOf(trade.Symbol);
 			string symbol = trade.Symbol;
 			string price = trade.Price;
+			double quantity = trade.Quantity;
 			bool isBuyer = trade.IsBuyer;
-			Console.SetCursorPosition(0, tradePosition + 2);
+			Console.SetCursorPosition(0, tradePosition + 3);
+			Console.CursorVisible = false;
 
 			if (isBuyer)
 			{
-				Console.BackgroundColor = ConsoleColor.Green;
-				Console.ForegroundColor = ConsoleColor.White;
-				Console.Write("\r{0,-10}{1,-10}", symbol, price);
-				//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
+				Console.ForegroundColor = ConsoleColor.Red;
+				Console.WriteLine("{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
 			}
 			else
 			{
-				Console.BackgroundColor = ConsoleColor.Red;
-				Console.ForegroundColor = ConsoleColor.White;
-				Console.Write("\r{0,-10}{1,-10}", symbol, price);
-				//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
+				Console.ForegroundColor = ConsoleColor.Green;
+				Console.WriteLine("{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
 			}
 		}
-
-		//private static void PrintData(ConcurrentDictionary<string, List<Trade>> trades)
-		//{
-		//	// TODO print updated trade separately
-
-		//	//Console.CursorVisible = false;
-		//	Console.SetCursorPosition(0, 3);
-
-		//	foreach (var trade in trades)
-		//	{
-		//		string symbol = trade.Key;
-		//		string price = trade.Value.Last().Price;
-		//		bool isBuyer = trade.Value.Last().IsBuyer;
-
-		//		if (isBuyer)
-		//		{
-		//			Console.BackgroundColor = ConsoleColor.Green;
-		//			Console.ForegroundColor = ConsoleColor.White;
-		//			Console.WriteLine("{0,-10}{1,-10}", symbol, price);
-		//			//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
-		//		}
-		//		else
-		//		{
-		//			Console.BackgroundColor = ConsoleColor.Red;
-		//			Console.ForegroundColor = ConsoleColor.White;
-		//			Console.WriteLine("{0,-10}{1,-10}", symbol, price);
-		//			//Console.WriteLine("count {0} {1}", trade.Key, trade.Value.Count);
-		//		}
-		//	}
-		//}
 	}
 }
 
