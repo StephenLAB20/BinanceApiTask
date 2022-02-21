@@ -17,6 +17,7 @@ namespace BinanceApiTask
 		{
 			Console.Write("Type the pairs (ex.: bnb/usdt, btc/usdt eth/usdt): ");
 			string input = Console.ReadLine();
+			Console.WriteLine("{0,-10} {1,-10} {2,-10}", "Pair", "Price", "Quantity");
 			string[] pairs = input.Replace("/", "").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 			ConcurrentDictionary<string, List<Trade>> trades = new ConcurrentDictionary<string, List<Trade>>();
 			int maxTradesCount = 10000;
@@ -105,18 +106,17 @@ namespace BinanceApiTask
 			string price = trade.Price;
 			double quantity = trade.Quantity;
 			bool isBuyer = trade.IsBuyer;
-			Console.SetCursorPosition(0, tradePosition + 3);
 			Console.CursorVisible = false;
-
+			Console.SetCursorPosition(0, tradePosition + 2);
 			if (isBuyer)
 			{
 				Console.ForegroundColor = ConsoleColor.Red;
-				Console.WriteLine("{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
+				Console.Write("\r{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
 			}
 			else
 			{
 				Console.ForegroundColor = ConsoleColor.Green;
-				Console.WriteLine("{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
+				Console.Write("\r{0,-10} {1,-10} {2,-10}", symbol, price, quantity);
 			}
 		}
 	}
